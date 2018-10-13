@@ -24,7 +24,7 @@ def multi_class_crossentropy(y_true, y_pred):
 def get_focal_loss(gamma = 2.0):
     def focal_loss(y_true, y_pred):
         #return K.sum(- y_true * K.pow(1.0 - y_pred, gamma) * K.log(y_pred + K.epsilon()), axis = -1)
-        return K.sum(- y_true * K.pow(1.0 - y_pred, gamma) * K.log(y_pred + 1e-12), axis = -1)
+        return K.sum(- y_true * K.pow(1.0 - y_pred, gamma) * K.log(K.clip(y_pred, min_value=1e-12, max_value=None)), axis = -1)
     return focal_loss
 
 

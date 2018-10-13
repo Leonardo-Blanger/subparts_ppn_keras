@@ -13,9 +13,13 @@ def output_encoder(ground_truth, network, neg_iou_threshold = 0.3, pos_iou_thres
     # For each item in the batch
     for boxes in ground_truth:
         num_gt = boxes.shape[0]
-        #if num_gt == 0: continue
-
         output = np.zeros((num_anchors, network.num_classes + 4))
+
+        if num_gt == 0:
+            output[:, network.background_id] = 1.0
+            batch_output.append(output)
+            continue
+        
         ious = []
 
         for box in boxes:
@@ -102,6 +106,7 @@ def output_decoder(batch_output, network, conf_threshold = 0.5):
         ymax = box_cy + box_h * 0.5
 
         class_id = np.expand_dims(class_id, axis = -1)
+        conf = np.expand_dims(conf, axis = -1)
         xmin = np.expand_dims(xmin, axis = -1)
         ymin = np.expand_dims(ymin, axis = -1)
         xmax = np.expand_dims(xmax, axis = -1)
