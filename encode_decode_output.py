@@ -19,7 +19,7 @@ def output_encoder(ground_truth, network, neg_iou_threshold = 0.3, pos_iou_thres
             output[:, network.background_id] = 1.0
             batch_output.append(output)
             continue
-        
+
         ious = []
 
         for box in boxes:
@@ -79,12 +79,12 @@ def output_encoder(ground_truth, network, neg_iou_threshold = 0.3, pos_iou_thres
     return np.array(batch_output)
 
 
-def output_decoder(batch_output, network, conf_threshold = 0.5):
+def output_decoder(batch_output, network, conf_threshold = 0.5, nms_threshold = 0.5):
     predicted_boxes = []
 
     for output in batch_output:
         predictions = np.where(np.logical_and(
-                np.argmax(output[:,:-4], axis=1) != network.background_id, np.max(output[:,:-4], axis=1) >= conf_threshold
+            np.argmax(output[:,:-4], axis=1) != network.background_id, np.max(output[:,:-4], axis=1) >= conf_threshold
         ))[0]
 
         class_id = np.argmax(output[predictions, :-4], axis=1)
@@ -112,7 +112,31 @@ def output_decoder(batch_output, network, conf_threshold = 0.5):
         xmax = np.expand_dims(xmax, axis = -1)
         ymax = np.expand_dims(ymax, axis = -1)
 
-        box = np.concatenate([class_id, conf, xmin, ymin, xmax, ymax], axis = -1)
-        predicted_boxes.append(box)
+        boxes = np.concatenate([class_id, conf, xmin, ymin, xmax, ymax], axis = -1)
+
+        if boxes.shape[0] == 0:
+            predicted_boxes.append(np.zeros((0,6)))
+            continue
+
+        # NMS
+        nms_boxes = np.zeros((0,6))
+
+        for class_id in range(1, network.num_classes):
+            class_predictions = np.array([box for box in boxes if box[0] == class_id])
+            if class_predictions.shape[0] == 0: continue
+
+            class_predictions = class_predictions[np.flip(np.argsort(class_predictions[:,1], axis=0), axis=0)]
+            nms_class_boxes = np.array([class_predictions[0]])
+
+            for box in class_predictions[1:]:
+                xmin1, ymin1, xmax1, ymax1 = box[2:]
+                xmin2, ymin2, xmax2, ymax2 = [nms_class_boxes[:,i] for i in range(2,6)]
+
+                if np.all(IoU(xmin1, ymin1, xmax1, ymax1, xmin2, ymin2, xmax2, ymax2) < nms_threshold):
+                    nms_class_boxes = np.concatenate([nms_class_boxes, [box]], axis=0)
+
+            nms_boxes = np.concatenate([nms_boxes, nms_class_boxes], axis=0)
+
+        predicted_boxes.append(nms_boxes)
 
     return predicted_boxes
