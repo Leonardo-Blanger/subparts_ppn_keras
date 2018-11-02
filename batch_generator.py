@@ -6,13 +6,14 @@ import sys
 from tqdm import tqdm
 import pickle
 import imgaug as ia
+from glob import glob
 from keras.preprocessing.image import load_img, img_to_array
 
 from encode_decode_output import output_encoder
-from augmentation import augment
 
 def batch_generator(network,
                     dataset = None,
+                    images_dir = None,
                     pickled_dataset = None,
                     batch_size = 32,
                     shuffle = False,
@@ -31,7 +32,7 @@ def batch_generator(network,
             raise Exception('At least one of dataset or pickled_dataset must be provided')
 
         if isinstance(dataset, str):
-            dataset = pd.read_csv(dataset)
+            dataset = pd.read_csv(dataset, dtype={'id': str})
 
         input_height, input_width = network.input_shape[:2]
         images = {}
@@ -39,11 +40,10 @@ def batch_generator(network,
 
         for i in tqdm(range(dataset.shape[0]), desc='Preprocessing Dataset', file=sys.stdout):
             entry = dataset.loc[i]
-            filepath = entry['filepath']
+            img_id = str(entry['id'])
+            filepath = glob(os.path.join(images_dir, img_id + '*'))[0]
             image_height = entry['image_height']
             image_width = entry['image_width']
-
-            img_id = ''.join(filepath.split('/')[-1].split('.')[:-1])
 
             if not img_id in images:
                 #img = img_to_array(load_img(filepath, target_size=(input_height, input_width)))
@@ -103,7 +103,7 @@ def batch_generator(network,
     return generator(images, objects), len(images)
 
 
-def augment(images, boxes, network, augmentation_seq):  
+def augment(images, boxes, network, augmentation_seq):
     BBs = [
         ia.BoundingBoxesOnImage([
             ia.BoundingBox(x1=x1, y1=y1, x2=x2, y2=y2, label=label)
@@ -120,7 +120,7 @@ def augment(images, boxes, network, augmentation_seq):
             break
         except:
             continue
-        
+
     BBs = [imgBBs.remove_out_of_image().cut_out_of_image() for imgBBs in BBs]
 
     boxes = [
@@ -129,5 +129,5 @@ def augment(images, boxes, network, augmentation_seq):
             for bb in imgBBs.bounding_boxes
         ]) for imgBBs in BBs
     ]
-    
+
     return images, boxes
