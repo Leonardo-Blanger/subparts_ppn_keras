@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from keras import backend as K
+import imgaug as ia
 
 def IoU(xmin1, ymin1, xmax1, ymax1, xmin2, ymin2, xmax2, ymax2):
     intersection_width  = np.maximum(0.0, np.minimum(xmax1, xmax2) - np.maximum(xmin1, xmin2))
@@ -41,3 +42,72 @@ def get_ppn_loss(gamma = 2.0, alpha = 1.0, background_id = 0):
 
         return (K.sum(class_loss) + K.sum(loc_loss)) / K.sum(pos_mask + neg_mask)
     return ppn_loss
+
+def AP(batch_ground_truth, batch_predictions, iou_threshold = 0.5):
+    all_predictions = []
+    total_positives = 0
+
+    for ground_truth, predictions in zip(batch_ground_truth, batch_predictions):
+        num_gts = len(ground_truth.bounding_boxes)
+        num_preds = predictions.shape[0]
+        total_positives += num_gts
+
+        if num_preds == 0: continue
+        pred_xmin, pred_ymin, pred_xmax, pred_ymax = [predictions[:,i] for i in range(-4,0)]
+
+        ious = []
+        for gt in ground_truth.bounding_boxes:
+            ious.append(IoU(gt.x1, gt.y1, gt.x2, gt.y2,
+                            pred_xmin, pred_ymin, pred_xmax, pred_ymax))
+        ious = np.array(ious)
+
+        matched_preds = []
+        for _ in range(num_gts):
+            best_gt = np.argmax(np.max(ious, axis=1))
+            best_pred = np.argmax(ious[best_gt, :])
+
+            if ious[best_gt, best_pred] >= iou_threshold:
+                matched_preds.append(best_pred)
+                ious[best_gt, :] = -1
+                ious[:, best_pred] = -1
+
+        for p in range(num_preds):
+            all_predictions.append((predictions[p,1], p in matched_preds))
+
+    all_predictions = sorted(all_predictions, reverse=True)
+
+    recalls, precisions = [0], [1]
+    TP, FP = 0, 0
+
+    for conf, result in all_predictions:
+        if result: TP += 1
+        else: FP += 1
+
+        precisions.append(TP / (TP+FP))
+        recalls.append(TP / total_positives)
+
+    for i in range(len(precisions)-2, -1, -1):
+        precisions[i] = max(precisions[i], precisions[i+1])
+
+    recalls = np.array(recalls)
+    precisions = np.array(precisions)
+
+    return np.sum((recalls[1:]-recalls[:-1]) * precisions[1:])
+
+def mAP(ground_truth, predictions, num_classes, background_id = 0, iou_threshold = 0.5):
+    APs = []
+
+    for label in range(num_classes):
+        if label == background_id: continue
+
+        class_ground_truth = [
+            ia.BoundingBoxesOnImage(
+                [box for box in boxes.bounding_boxes if box.label == label],
+                shape = boxes.shape
+            ) for boxes in ground_truth
+        ]
+        class_predictions = [pred[pred[:,0] == label] for pred in predictions]
+
+        APs.append(AP(class_ground_truth, class_predictions, iou_threshold))
+
+    return np.mean(APs)
