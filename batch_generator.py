@@ -6,6 +6,7 @@ import sys
 from tqdm import tqdm
 import pickle
 import imgaug as ia
+from imgaug import BoundingBox, BoundingBoxesOnImage
 from glob import glob
 from keras.preprocessing.image import load_img, img_to_array
 
@@ -89,7 +90,13 @@ def batch_generator(network,
                 batch_start = 0
 
             batch_X = images[batch_start : batch_start+batch_size]
-            batch_y = objects[batch_start : batch_start+batch_size]
+            batch_y = [
+                ia.BoundingBoxesOnImage([
+                    ia.BoundingBox(x1=x1, y1=y1, x2=x2, y2=y2, label=label)
+                    for (label, x1, y1, x2, y2) in img_boxes
+                ], shape = network.input_shape)
+                for img_boxes in objects[batch_start : batch_start+batch_size]
+            ]
             batch_start += batch_size
 
             if augmentation:
@@ -104,30 +111,17 @@ def batch_generator(network,
 
 
 def augment(images, boxes, network, augmentation_seq):
-    BBs = [
-        ia.BoundingBoxesOnImage([
-            ia.BoundingBox(x1=x1, y1=y1, x2=x2, y2=y2, label=label)
-            for (label, x1, y1, x2, y2) in img_boxes
-        ], shape = network.input_shape)
-        for img_boxes in boxes
-    ]
-
     for _ in range(5):
         try:
             seq_det = augmentation_seq.to_deterministic()
-            BBs = seq_det.augment_bounding_boxes(BBs)
-            images = seq_det.augment_images(np.copy(images))
+            _boxes = seq_det.augment_bounding_boxes(boxes)
+            _images = seq_det.augment_images(np.copy(images))
+            boxes = _boxes
+            images = _images
             break
         except:
             continue
 
-    BBs = [imgBBs.remove_out_of_image().cut_out_of_image() for imgBBs in BBs]
-
-    boxes = [
-        np.array([
-            [bb.label, bb.x1, bb.y1, bb.x2, bb.y2]
-            for bb in imgBBs.bounding_boxes
-        ]) for imgBBs in BBs
-    ]
+    boxes = [img_boxes.remove_out_of_image().cut_out_of_image() for img_boxes in boxes]
 
     return images, boxes
