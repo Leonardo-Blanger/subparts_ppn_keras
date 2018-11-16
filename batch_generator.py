@@ -10,6 +10,7 @@ from imgaug import BoundingBox, BoundingBoxesOnImage
 from glob import glob
 from keras.preprocessing.image import load_img, img_to_array
 
+import utils
 from encode_decode_output import output_encoder
 
 def batch_generator(network,
@@ -92,7 +93,7 @@ def batch_generator(network,
             batch_X = images[batch_start : batch_start+batch_size]
             batch_y = [
                 ia.BoundingBoxesOnImage([
-                    ia.BoundingBox(x1=x1, y1=y1, x2=x2, y2=y2, label=label)
+                    utils.BoundingBox(x1=x1, y1=y1, x2=x2, y2=y2, label=label)
                     for (label, x1, y1, x2, y2) in img_boxes
                 ], shape = network.input_shape)
                 for img_boxes in objects[batch_start : batch_start+batch_size]

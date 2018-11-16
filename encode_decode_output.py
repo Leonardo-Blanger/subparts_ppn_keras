@@ -1,5 +1,7 @@
 import numpy as np
+import imgaug as ia
 
+import utils
 from metrics import IoU
 
 def output_encoder(ground_truth, network, neg_iou_threshold = 0.3, pos_iou_threshold = 0.5):
@@ -112,13 +114,15 @@ def output_decoder(batch_output, network, conf_threshold = 0.5, nms_threshold = 
         boxes = np.concatenate([class_id, conf, xmin, ymin, xmax, ymax], axis = -1)
 
         if boxes.shape[0] == 0:
-            predicted_boxes.append(np.zeros((0,6)))
+            predicted_boxes.append(ia.BoundingBoxesOnImage([], shape = network.input_shape[:2]))
             continue
 
         # NMS
-        nms_boxes = np.zeros((0,6))
+        nms_boxes = []
 
-        for class_id in range(1, network.num_classes):
+        for class_id in range(network.num_classes):
+            if class_id == network.background_id: continue
+
             class_predictions = np.array([box for box in boxes if box[0] == class_id])
             if class_predictions.shape[0] == 0: continue
 
@@ -132,8 +136,10 @@ def output_decoder(batch_output, network, conf_threshold = 0.5, nms_threshold = 
                 if np.all(IoU(xmin1, ymin1, xmax1, ymax1, xmin2, ymin2, xmax2, ymax2) < nms_threshold):
                     nms_class_boxes = np.concatenate([nms_class_boxes, [box]], axis=0)
 
-            nms_boxes = np.concatenate([nms_boxes, nms_class_boxes], axis=0)
+            [nms_boxes.append(utils.BoundingBox(
+                x1=box[2], y1=box[3], x2=box[4], y2=box[5], label=box[0], confidence=box[1]
+            )) for box in nms_class_boxes]
 
-        predicted_boxes.append(nms_boxes)
+        predicted_boxes.append(ia.BoundingBoxesOnImage(nms_boxes, shape = network.input_shape[:2]))
 
     return predicted_boxes
