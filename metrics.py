@@ -71,6 +71,7 @@ def AP(batch_ground_truth, batch_predictions, iou_threshold = 0.5):
     recalls, precisions = [0], [1]
     TP, FP = 0, 0
 
+
     for conf, result in all_predictions:
         if result: TP += 1
         else: FP += 1
