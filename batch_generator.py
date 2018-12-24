@@ -34,7 +34,7 @@ def batch_generator(network,
             raise Exception('At least one of dataset or pickled_dataset must be provided')
 
         if isinstance(dataset, str):
-            dataset = pd.read_csv(dataset, dtype={'id': str})
+            dataset = pd.read_csv(dataset, dtype={'image_id': str})
 
         input_height, input_width = network.input_shape[:2]
         images = {}
@@ -42,7 +42,7 @@ def batch_generator(network,
 
         for i in tqdm(range(dataset.shape[0]), desc='Preprocessing Dataset', file=sys.stdout):
             entry = dataset.loc[i]
-            img_id = str(entry['id'])
+            img_id = str(entry['image_id'])
             filepath = glob(os.path.join(images_dir, img_id + '*'))[0]
             image_height = entry['image_height']
             image_width = entry['image_width']
