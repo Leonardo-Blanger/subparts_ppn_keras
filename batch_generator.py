@@ -130,7 +130,7 @@ class BatchGenerator:
                 batch_start += batch_size
 
                 if augmentation:
-                    batch_X, batch_y = self.augment(batch_X, batch_y, self.network, augmentation)
+                    batch_X, batch_y = self.augment(batch_X, batch_y, augmentation)
 
                 if encode_output:
                     batch_y = output_encoder(batch_y, self.network)
