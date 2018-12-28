@@ -12,6 +12,7 @@ from keras.preprocessing.image import load_img, img_to_array
 
 import utils
 from encode_decode_output import output_encoder
+from encode_decode_subparts_output import subparts_output_encoder
 
 class SubPartsBatchGenerator:
     def __init__(self,
@@ -172,9 +173,10 @@ class SubPartsBatchGenerator:
                         batch_X, batch_y_objects, batch_y_subparts, augmentation)
 
                 if encode_output:
-                    batch_y = output_encoder(batch_y_objects, batch_y_subparts, self.network)
-                else:
-                    batch_y = [batch_y_subparts, batch_y_objects]
+                    batch_y_objects = output_encoder(batch_y_objects, self.network)
+                    batch_y_subparts = subparts_output_encoder(batch_y_subparts, self.network)
+
+                batch_y = [batch_y_subparts, batch_y_objects]
 
                 yield batch_X, batch_y
 

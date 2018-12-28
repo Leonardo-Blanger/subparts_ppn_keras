@@ -28,7 +28,7 @@ class SubParts_SSD_PPN_MobileNet(SubParts_SSD):
         self.subparts_class_labels = subparts_class_labels
 
         self.num_classes = len(class_labels)
-        self.num_part_classes = len(subparts_class_labels)
+        self.num_subpart_classes = len(subparts_class_labels)
 
         self.background_id = class_labels.index('background')
         self.subparts_background_id = subparts_class_labels.index('background')
@@ -79,14 +79,14 @@ class SubParts_SSD_PPN_MobileNet(SubParts_SSD):
                             activation = 'relu',
                             name = 'subparts_shared_conv')
 
-        subparts_box_classifier = Conv2D(filters = self.boxes_per_cell * self.num_classes,
+        subparts_box_classifier = Conv2D(filters = self.subparts_boxes_per_cell * self.num_subpart_classes,
                                 kernel_size = (3, 3),
                                 strides = (1, 1),
                                 padding = 'same',
                                 activation = 'linear',
                                 name = 'subparts_box_classifier')
 
-        subparts_box_regressor = Conv2D(filters = self.boxes_per_cell * 4,
+        subparts_box_regressor = Conv2D(filters = self.subparts_boxes_per_cell * 4,
                                 kernel_size = (3, 3),
                                 strides = (1, 1),
                                 padding = 'same',
@@ -103,10 +103,10 @@ class SubParts_SSD_PPN_MobileNet(SubParts_SSD):
             subparts_featmaps.append(featmap)
 
             self.subparts_tensor_sizes.append(featmap_size)
-            total_boxes = featmap_size[0] * featmap_size[1] * self.boxes_per_cell
+            total_boxes = featmap_size[0] * featmap_size[1] * self.subparts_boxes_per_cell
 
             cls = subparts_box_classifier(featmap)
-            cls = Reshape((total_boxes, self.num_classes))(cls)
+            cls = Reshape((total_boxes, self.num_subpart_classes))(cls)
             cls = Activation('softmax')(cls)
 
             loc = subparts_box_regressor(featmap)
