@@ -1,11 +1,10 @@
-from keras.applications import mobilenet
+from keras.applications import vgg16
 from keras.layers import Input, Lambda, MaxPooling2D, Conv2D, Reshape, Concatenate, Activation
 from keras.models import Model
 
-#from networks.ssd import SSD
-from .ssd import SSD
+from networks.ssd import SSD
 
-class SSD_PPN_MobileNet(SSD):
+class SSD_PPN_VGG16(SSD):
     def __init__(self,
                 class_labels,
                 input_shape = (300,300,3),
@@ -34,20 +33,22 @@ class SSD_PPN_MobileNet(SSD):
 
     def build_model(self):
         input = Input(shape=self.input_shape)
-        preprocessed_input = Lambda(lambda x: mobilenet.preprocess_input(x), name='preprocess')(input)
+        preprocessed_input = Lambda(lambda x: vgg16.preprocess_input(x), name='preprocess')(input)
 
-        base = mobilenet.MobileNet(include_top=False, weights='imagenet', input_tensor=preprocessed_input)
-        featmap = base.get_layer('conv_pw_11_relu').output
+        base = vgg16.VGG16(include_top=False, weights='imagenet', input_tensor=preprocessed_input)
+        featmap = base.get_layer('block5_conv3').output
 
         feature_maps = [featmap]
 
         featmap_height, featmap_width = featmap.shape.as_list()[1:3]
         self.feature_map_sizes = [(featmap_height, featmap_width)]
 
+        print(featmap)
+
         while len(feature_maps) < self.num_scales:
             featmap = MaxPooling2D(pool_size = (2, 2), padding = 'same', name='max_pool_%d' % len(feature_maps))(featmap)
             feature_maps.append(featmap)
-
+            print(featmap)
             featmap_height, featmap_width = featmap.shape.as_list()[1:3]
             self.feature_map_sizes.append((featmap_height, featmap_width))
 

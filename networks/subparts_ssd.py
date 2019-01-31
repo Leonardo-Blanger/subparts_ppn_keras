@@ -68,16 +68,16 @@ class SubParts_SSD:
             cy = (rows + 0.5) * vertical_stride
             cx = np.expand_dims(cx, axis = -1)
             cy = np.expand_dims(cy, axis = -1)
-            cx = np.repeat(cx, self.boxes_per_cell, axis = -1)
-            cy = np.repeat(cy, self.boxes_per_cell, axis = -1)
+            cx = np.repeat(cx, self.subparts_boxes_per_cell, axis = -1)
+            cy = np.repeat(cy, self.subparts_boxes_per_cell, axis = -1)
 
             width = np.zeros_like(cx)
             height = np.zeros_like(cx)
             for j, ar in enumerate(self.subparts_aspect_ratios):
                 width[...,j] = img_width * self.subparts_scales[i] * math.sqrt(ar)
                 height[...,j] = img_height * self.subparts_scales[i] / math.sqrt(ar)
-            width[...,-1] = img_width * math.sqrt(self.subparts_scales[i] * self.scales[i+1])
-            height[...,-1] = img_height * math.sqrt(self.subparts_scales[i] * self.scales[i+1])
+            width[...,-1] = img_width * math.sqrt(self.subparts_scales[i] * self.subparts_scales[i+1])
+            height[...,-1] = img_height * math.sqrt(self.subparts_scales[i] * self.subparts_scales[i+1])
 
             self.subparts_anchor_cx.append(cx.reshape((-1,)))
             self.subparts_anchor_cy.append(cy.reshape((-1,)))

@@ -1,8 +1,8 @@
 import numpy as np
 import imgaug as ia
 
-import utils
-from metrics import IoU
+from . import utils
+from .metrics import IoU
 
 def subparts_output_encoder(ground_truth, network, neg_iou_threshold = 0.3, pos_iou_threshold = 0.5):
     anchor_xmin = network.subparts_anchor_xmin
@@ -39,8 +39,8 @@ def subparts_output_encoder(ground_truth, network, neg_iou_threshold = 0.3, pos_
                 best_anchor = np.argmax(ious[best_gt, :])
 
                 matches[best_gt].append(best_anchor)
-                ious[best_gt, :] = 0.0
-                ious[:, best_anchor] = 0.0
+                ious[best_gt, :] = -1.0
+                ious[:, best_anchor] = -1.0
 
         def find_best_match_for_anchors(ious):
             for anchor_index in range(num_anchors):
@@ -57,6 +57,8 @@ def subparts_output_encoder(ground_truth, network, neg_iou_threshold = 0.3, pos_
         find_best_match_for_anchors(ious)
 
         for i, box in enumerate(boxes.bounding_boxes):
+            if box.area < 1.0: continue
+
             box_cx = (box.x1 + box.x2) * 0.5
             box_cy = (box.y1 + box.y2) * 0.5
             box_w = box.x2 - box.x1
@@ -67,7 +69,7 @@ def subparts_output_encoder(ground_truth, network, neg_iou_threshold = 0.3, pos_
             anchor_w  = network.subparts_anchor_width[matches[i]]
             anchor_h  = network.subparts_anchor_height[matches[i]]
 
-            output[matches[i], int(box.label)] = 1.0
+            output[matches[i], network.subparts_class_labels.index(box.label)] = 1.0
             output[matches[i], -4] = (box_cx - anchor_cx) / anchor_w
             output[matches[i], -3] = (box_cy - anchor_cy) / anchor_h
             output[matches[i], -2] = np.log(box_w / anchor_w)
@@ -137,7 +139,7 @@ def subparts_output_decoder(batch_output, network, conf_threshold = 0.5, nms_thr
                     nms_class_boxes = np.concatenate([nms_class_boxes, [box]], axis=0)
 
             [nms_boxes.append(utils.BoundingBox(
-                x1=box[2], y1=box[3], x2=box[4], y2=box[5], label=box[0], confidence=box[1]
+                x1=box[2], y1=box[3], x2=box[4], y2=box[5], label=network.subparts_class_labels[int(box[0])], confidence=box[1]
             )) for box in nms_class_boxes]
 
         predicted_boxes.append(ia.BoundingBoxesOnImage(nms_boxes, shape = network.input_shape[:2]))

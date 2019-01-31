@@ -1,1 +1,1 @@
-from utils.bounding_boxes import BoundingBox
+from .bounding_boxes import BoundingBox

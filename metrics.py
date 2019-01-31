@@ -43,6 +43,98 @@ def get_ppn_loss(gamma = 2.0, alpha = 1.0, background_id = 0):
         return (K.sum(class_loss) + K.sum(loc_loss)) / K.sum(pos_mask + neg_mask)
     return ppn_loss
 
+def precision(batch_ground_truth, batch_predictions, iou_threshold = 0.5):
+    TP, FP = 0, 0
+
+    for ground_truth, predictions in zip(batch_ground_truth, batch_predictions):
+        ground_truth = ground_truth.bounding_boxes
+
+        predictions = predictions.bounding_boxes
+        predictions = sorted(predictions, key=lambda x: x.confidence, reverse=True)
+
+        matched = np.zeros(len(ground_truth))
+
+        for pred in predictions:
+            iou = [pred.iou(gt) for gt in ground_truth]
+            i = np.argmax(iou)
+
+            if iou[i] >= iou_threshold and not matched[i]:
+                TP += 1
+                matched[i] = True
+            else:
+                FP += 1
+
+    return float(TP) / (TP + FP)
+
+
+def recall(batch_ground_truth, batch_predictions, iou_threshold = 0.5):
+    TP, total_positives = 0, 0
+
+    for ground_truth, predictions in zip(batch_ground_truth, batch_predictions):
+        ground_truth = ground_truth.bounding_boxes
+        total_positives += len(ground_truth)
+
+        predictions = predictions.bounding_boxes
+        predictions = sorted(predictions, key=lambda x: x.confidence, reverse=True)
+
+        matched = np.zeros(len(ground_truth))
+
+        for pred in predictions:
+            iou = [pred.iou(gt) for gt in ground_truth]
+            i = np.argmax(iou)
+
+            if iou[i] >= iou_threshold and not matched[i]:
+                TP += 1
+                matched[i] = True
+
+    return float(TP) / total_positives
+
+def precision(batch_ground_truth, batch_predictions, iou_threshold = 0.5):
+    TP, total_predictions = 0, 0
+
+    for ground_truth, predictions in zip(batch_ground_truth, batch_predictions):
+        ground_truth = ground_truth.bounding_boxes
+
+        predictions = predictions.bounding_boxes
+        total_predictions += len(predictions)
+        predictions = sorted(predictions, key=lambda x: x.confidence, reverse=True)
+
+        matched = np.zeros(len(ground_truth))
+
+        for pred in predictions:
+            iou = [pred.iou(gt) for gt in ground_truth]
+            i = np.argmax(iou)
+
+            if iou[i] >= iou_threshold and not matched[i]:
+                matched[i] = True
+                TP += 1
+
+    return float(TP) / total_predictions
+
+
+def false_positives(batch_ground_truth, batch_predictions, iou_threshold = 0.5):
+    FP = 0
+
+    for ground_truth, predictions in zip(batch_ground_truth, batch_predictions):
+        ground_truth = ground_truth.bounding_boxes
+
+        predictions = predictions.bounding_boxes
+        predictions = sorted(predictions, key=lambda x: x.confidence, reverse=True)
+
+        matched = np.zeros(len(ground_truth))
+
+        for pred in predictions:
+            iou = [pred.iou(gt) for gt in ground_truth]
+            i = np.argmax(iou)
+
+            if iou[i] >= iou_threshold and not matched[i]:
+                matched[i] = True
+            else:
+                FP += 1
+
+    return FP
+
+
 def AP(batch_ground_truth, batch_predictions, iou_threshold = 0.5):
     all_predictions = []
     total_positives = 0
@@ -87,7 +179,7 @@ def AP(batch_ground_truth, batch_predictions, iou_threshold = 0.5):
 
     return np.sum((recalls[1:]-recalls[:-1]) * precisions[1:])
 
-def mAP(ground_truth, predictions, classes, iou_threshold = 0.5):
+def per_class_AP(ground_truth, predictions, classes, iou_threshold = 0.5):
     APs = []
 
     for label in classes:
@@ -106,4 +198,7 @@ def mAP(ground_truth, predictions, classes, iou_threshold = 0.5):
 
         APs.append(AP(class_ground_truth, class_predictions, iou_threshold))
 
-    return np.mean(APs)
+    return APs
+
+def mAP(ground_truth, predictions, classes, iou_threshold = 0.5):
+    return np.mean(per_class_AP(ground_truth, predictions, classes, iou_threshold))

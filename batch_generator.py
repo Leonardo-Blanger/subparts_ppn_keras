@@ -10,8 +10,8 @@ from imgaug import BoundingBox, BoundingBoxesOnImage
 from glob import glob
 from keras.preprocessing.image import load_img, img_to_array
 
-import utils
-from encode_decode_output import output_encoder
+from . import utils
+from .encode_decode_output import output_encoder
 
 class BatchGenerator:
     def __init__(self,
@@ -112,20 +112,20 @@ class BatchGenerator:
                 objects = [objects[i] for i in perm]
 
             while True:
-                if batch_start >= len(images):
+                if batch_start + batch_size > len(images):
                     if shuffle:
                         perm = np.random.permutation(len(images))
                         images = images[perm]
                         objects = [objects[i] for i in perm]
                     batch_start = 0
 
-                batch_X = images[batch_start : batch_start+batch_size]
+                batch_X = images[batch_start : batch_start + batch_size]
                 batch_y = [
                     ia.BoundingBoxesOnImage([
-                        utils.BoundingBox(x1=x1, y1=y1, x2=x2, y2=y2, label=label)
+                        utils.BoundingBox(x1=x1, y1=y1, x2=x2, y2=y2, label=self.network.class_labels[int(label)])
                         for (label, x1, y1, x2, y2) in img_boxes
                     ], shape = self.network.input_shape)
-                    for img_boxes in objects[batch_start : batch_start+batch_size]
+                    for img_boxes in objects[batch_start : batch_start + batch_size]
                 ]
                 batch_start += batch_size
 
@@ -140,8 +140,8 @@ class BatchGenerator:
         return generator(self.images, self.objects), len(self.images)
 
 
-    def augment(self, images, boxes, augmentation_seq):
-        for _ in range(5):
+    def augment(self, images, boxes, augmentation_seq, max_tries = 1):
+        for _ in range(max_tries):
             try:
                 seq_det = augmentation_seq.to_deterministic()
                 _boxes = seq_det.augment_bounding_boxes(boxes)
@@ -151,7 +151,5 @@ class BatchGenerator:
                 break
             except:
                 continue
-
-        boxes = [img_boxes.remove_out_of_image().cut_out_of_image() for img_boxes in boxes]
 
         return images, boxes

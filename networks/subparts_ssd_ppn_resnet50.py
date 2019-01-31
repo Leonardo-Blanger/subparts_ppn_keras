@@ -1,10 +1,10 @@
-from keras.applications import mobilenet
+from keras.applications import resnet50
 from keras.layers import Input, Lambda, MaxPooling2D, Conv2D, Reshape, Concatenate, Activation, Add
 from keras.models import Model
 
 from networks.subparts_ssd import SubParts_SSD
 
-class SubParts_SSD_PPN_MobileNet(SubParts_SSD):
+class SubParts_SSD_PPN_ResNet50(SubParts_SSD):
     def __init__(self,
                 class_labels,
                 subparts_class_labels,
@@ -58,10 +58,10 @@ class SubParts_SSD_PPN_MobileNet(SubParts_SSD):
 
     def build_model(self):
         input = Input(shape=self.input_shape)
-        preprocessed_input = Lambda(lambda x: mobilenet.preprocess_input(x), name='preprocess')(input)
+        preprocessed_input = Lambda(lambda x: resnet50.preprocess_input(x), name='preprocess')(input)
 
-        base = mobilenet.MobileNet(include_top=False, weights='imagenet', input_tensor=preprocessed_input)
-        featmap = base.get_layer('conv_pw_7_relu').output
+        base = resnet50.ResNet50(include_top=False, weights='imagenet', input_tensor=preprocessed_input)
+        featmap = base.get_layer('activation_30').output
 
         feature_maps = [featmap]
 
@@ -127,7 +127,7 @@ class SubParts_SSD_PPN_MobileNet(SubParts_SSD):
         subparts_loc_output = Concatenate(axis = 1)(subparts_loc_output)
         subparts_output = Concatenate(axis = -1, name='subparts_output')([subparts_cls_output, subparts_loc_output])
 
-        featmap = base.get_layer('conv_pw_11_relu').output
+        featmap = base.get_layer('activation_40').output
 
         feature_maps = [featmap]
 
