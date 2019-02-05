@@ -2,7 +2,7 @@ from keras.applications import vgg16
 from keras.layers import Input, Lambda, MaxPooling2D, Conv2D, Reshape, Concatenate, Activation
 from keras.models import Model
 
-from networks.ssd import SSD
+from .ssd import SSD
 
 class SSD_PPN_VGG16(SSD):
     def __init__(self,

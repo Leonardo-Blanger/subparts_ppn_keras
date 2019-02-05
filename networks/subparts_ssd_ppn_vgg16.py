@@ -2,7 +2,7 @@ from keras.applications import vgg16
 from keras.layers import Input, Lambda, MaxPooling2D, Conv2D, Reshape, Concatenate, Activation, Add
 from keras.models import Model
 
-from networks.subparts_ssd import SubParts_SSD
+from .subparts_ssd import SubParts_SSD
 
 class SubParts_SSD_PPN_VGG16(SubParts_SSD):
     def __init__(self,
